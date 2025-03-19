@@ -37,7 +37,7 @@ const handleMinimize = () => {
 </script>
 
 <template>
-  <div class="container">
+  <div class="container-fluid min-vh-100 vh-100 p-0">
     <header class="header">
       <h1>Home Cloud</h1>
 
@@ -58,7 +58,11 @@ const handleMinimize = () => {
       <FilesList :files="files" :is-loading="isLoading" @refresh="loadFiles" />
     </main>
 
-    <StatusBar :files-count="files.length" :watch-dir="watchDir" />
+    <StatusBar
+      :files-count="files.length"
+      :watch-dir="watchDir"
+      class="fixed-bottom"
+    />
   </div>
 </template>
 
@@ -86,9 +90,7 @@ body {
   background-color: var(--bg-color);
 }
 
-.container {
-  display: flex;
-  flex-direction: column;
+.height-100 {
   height: 100vh;
 }
 
