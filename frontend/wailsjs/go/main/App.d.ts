@@ -7,3 +7,5 @@ export function GetFiles():Promise<Array<sync.FileInfo>>;
 export function GetWatchDir():Promise<string>;
 
 export function MinimizeToTray():Promise<void>;
+
+export function SetWatchDir(arg1:string):Promise<void>;

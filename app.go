@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"homecloud/internal/sync"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -14,10 +16,11 @@ type App struct {
 	ctx         context.Context
 	syncManager *sync.SyncManager
 	watchDir    string
+	iconData    []byte
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
+// NewApp creates a new App application stru	ct
+func NewApp(iconData []byte) *App {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(fmt.Errorf("failed to get home directory: %w", err))
@@ -28,6 +31,7 @@ func NewApp() *App {
 
 	return &App{
 		watchDir: watchDir,
+		iconData: iconData,
 	}
 }
 
@@ -41,13 +45,15 @@ func (a *App) startup(ctx context.Context) {
 	if err != nil {
 		fmt.Printf("failed to start sync manager: %v\n", err)
 	}
+
+	a.setupSystemTray()
 }
 
 func (a *App) GetWatchDir() string {
 	return a.watchDir
 }
 
-func (a *App) setWatchDir(dir string) error {
+func (a *App) SetWatchDir(dir string) error {
 	if a.syncManager != nil {
 		a.syncManager.Stop()
 	}
@@ -83,8 +89,6 @@ func (a *App) MinimizeToTray() {
 	// We'll implement this in tray.go
 	// For now, just hide the window
 	if a.ctx != nil {
-		// Import "github.com/wailsapp/wails/v2/pkg/runtime" at the top
-		// and uncomment this line when adding tray support
-		// runtime.WindowHide(a.ctx)
+		runtime.WindowHide(a.ctx)
 	}
 }

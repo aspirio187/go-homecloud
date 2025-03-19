@@ -13,3 +13,7 @@ export function GetWatchDir() {
 export function MinimizeToTray() {
   return window['go']['main']['App']['MinimizeToTray']();
 }
+
+export function SetWatchDir(arg1) {
+  return window['go']['main']['App']['SetWatchDir'](arg1);
+}

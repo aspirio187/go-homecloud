@@ -72,7 +72,7 @@ export function useFileSystem() {
 
   const minimizeToTray = async () => {
     try {
-      await window.go.main.App.MinimizeToTray;
+      window.go.main.App.MinimizeToTray();
     } catch (e) {
       console.error("Failed to minimize to tray:", e);
     }
