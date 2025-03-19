@@ -3,6 +3,9 @@ package sync
 
 import (
 	"fmt"
+	"io/fs"
+	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,6 +29,8 @@ type FileInfo struct {
 	LastModified time.Time
 	Size         int64
 	IsDownloaded bool
+	IsDirectory  bool
+	FilesContent map[string]*FileInfo
 }
 
 // SyncManager handles file synchronization
@@ -52,6 +57,9 @@ func NewSyncManager(watchDir string) *SyncManager {
 
 // Start begins the sync manager
 func (sm *SyncManager) Start() error {
+	// Read initial files
+	sm.initialRead()
+
 	if sm.isRunning {
 		return fmt.Errorf("sync manager is already running")
 	}
@@ -183,4 +191,73 @@ func (sm *SyncManager) updateFileStatus(path string, status SyncStatus) {
 		sm.statusChan <- &updatedInfo
 	}
 	sm.mu.Unlock()
+}
+
+func (sm *SyncManager) initialRead() {
+	// This function is called when the app starts
+	// It reads the initial files in the watch directory
+	// and adds them to the sync manager
+	// This is useful for syncing existing files on startup
+
+	var initialContent []*FileInfo = make([]*FileInfo, 0)
+
+	filepath.WalkDir(sm.watchDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == sm.watchDir {
+			return nil
+		}
+
+		info, err := d.Info()
+
+		if err != nil {
+			fmt.Println("Error:", err)
+
+			return nil
+		}
+
+		name := info.Name()
+		isDir := d.IsDir()
+
+		fileInfo := &FileInfo{
+			Path:         path,
+			Status:       StatusSynced,
+			LastModified: info.ModTime(),
+			Size:         info.Size(),
+			IsDownloaded: true,
+			IsDirectory:  isDir,
+		}
+
+		if !isDir && path != sm.watchDir {
+
+			filepathDir := filepath.Dir(path)
+			// Get the file info directory and add this to it's content
+			i := slices.IndexFunc(initialContent, func(e *FileInfo) bool {
+				return e.Path == filepathDir
+			})
+
+			if i != -1 {
+				if initialContent[i].FilesContent == nil {
+					initialContent[i].FilesContent = make(map[string]*FileInfo)
+				}
+
+				// Add the file to the directory
+				initialContent[i].FilesContent[name] = fileInfo
+
+				return nil
+			}
+		}
+
+		initialContent = append(initialContent, fileInfo)
+
+		return nil
+	})
+
+	sm.fileInfos = make(map[string]*FileInfo)
+
+	for _, info := range initialContent {
+		sm.fileInfos[info.Path] = info
+	}
 }
