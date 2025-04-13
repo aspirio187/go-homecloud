@@ -7,6 +7,8 @@ export namespace sync {
 	    LastModified: any;
 	    Size: number;
 	    IsDownloaded: boolean;
+	    IsDirectory: boolean;
+	    FilesContent: Record<string, FileInfo>;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileInfo(source);
@@ -19,6 +21,8 @@ export namespace sync {
 	        this.LastModified = this.convertValues(source["LastModified"], null);
 	        this.Size = source["Size"];
 	        this.IsDownloaded = source["IsDownloaded"];
+	        this.IsDirectory = source["IsDirectory"];
+	        this.FilesContent = this.convertValues(source["FilesContent"], FileInfo, true);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -4,6 +4,8 @@ export interface FileInfo {
   LastModified: string;
   Size: number;
   IsDownloaded: boolean;
+  IsDirectory: boolean;
+  FilesContent: FileInfo[];
 }
 
 export interface SyncState {

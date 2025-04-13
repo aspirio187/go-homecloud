@@ -91,13 +91,30 @@ const getStatusIcon = (status: string) => {
         <span class="file-size-header">Size</span>
       </div>
 
-      <div v-for="file in sortedFiles" :key="file.Path" class="file-item">
-        <div class="file-name">{{ getFileName(file.Path) }}</div>
-        <div class="file-status" :class="getStatusClass(file.Status)">
-          <span class="status-icon">{{ getStatusIcon(file.Status) }}</span>
-          {{ file.Status.replace("_", " ") }}
+      <div id="filesAccordion" class="accordion">
+        <div v-for="file in sortedFiles" :key="file.Path" class="file-item">
+          <div v-if="file.IsDirectory" class="file-name accordion-item">
+            <span class="accordion-header">{{ getFileName(file.Path) }}</span>
+            <div
+              class="accordion-collapse collapse"
+              data-bs-parent="filesAccordion"
+            >
+              <!-- <FilesList
+                :files="file.FilesContent"
+                :is-loading="isLoading"
+                @refresh="emits('refresh')"
+              /> -->
+            </div>
+          </div>
+          <div v-else>
+            <div class="file-name">{{ getFileName(file.Path) }}</div>
+            <div class="file-status" :class="getStatusClass(file.Status)">
+              <span class="status-icon">{{ getStatusIcon(file.Status) }}</span>
+              {{ file.Status.replace("_", " ") }}
+            </div>
+            <div class="file-size">{{ formatFileSize(file.Size) }}</div>
+          </div>
         </div>
-        <div class="file-size">{{ formatFileSize(file.Size) }}</div>
       </div>
     </div>
   </div>
