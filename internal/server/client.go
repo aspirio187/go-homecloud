@@ -75,7 +75,7 @@ func (c *Client) UploadFile(path string, content []byte, metadata map[string]str
 	}
 
 	body := new(bytes.Buffer)
-	writer := http.NewRequest("POST", c.baseURL+"/api/files/upload", body)
+	// writer, err := http.NewRequest("POST", c.baseURL+"/api/files/upload", body)
 	// TODO: Implement multipart form upload for file
 
 	req, err := http.NewRequest("POST", c.baseURL+"/api/files/upload", body)

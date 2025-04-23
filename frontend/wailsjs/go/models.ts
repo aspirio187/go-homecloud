@@ -1,14 +1,18 @@
-export namespace sync {
+export namespace models {
 	
 	export class FileInfo {
-	    Path: string;
-	    Status: string;
+	    path: string;
+	    status: string;
 	    // Go type: time
-	    LastModified: any;
-	    Size: number;
-	    IsDownloaded: boolean;
-	    IsDirectory: boolean;
-	    FilesContent: Record<string, FileInfo>;
+	    lastModified: any;
+	    size: number;
+	    isDownloaded: boolean;
+	    isDirectory: boolean;
+	    version: number;
+	    checksum?: string;
+	    // Go type: time
+	    lastSynced: any;
+	    filesContent?: Record<string, FileInfo>;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileInfo(source);
@@ -16,13 +20,16 @@ export namespace sync {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Path = source["Path"];
-	        this.Status = source["Status"];
-	        this.LastModified = this.convertValues(source["LastModified"], null);
-	        this.Size = source["Size"];
-	        this.IsDownloaded = source["IsDownloaded"];
-	        this.IsDirectory = source["IsDirectory"];
-	        this.FilesContent = this.convertValues(source["FilesContent"], FileInfo, true);
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.lastModified = this.convertValues(source["lastModified"], null);
+	        this.size = source["size"];
+	        this.isDownloaded = source["isDownloaded"];
+	        this.isDirectory = source["isDirectory"];
+	        this.version = source["version"];
+	        this.checksum = source["checksum"];
+	        this.lastSynced = this.convertValues(source["lastSynced"], null);
+	        this.filesContent = this.convertValues(source["filesContent"], FileInfo, true);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
