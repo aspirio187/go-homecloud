@@ -10,47 +10,27 @@ import (
 	"time"
 
 	"homecloud/internal/filesystem"
+	"homecloud/internal/models"
 )
-
-// SyncStatus represents the sync status of a file
-type SyncStatus string
-
-const (
-	StatusNotSynced SyncStatus = "NOT_SYNCED"
-	StatusSyncing   SyncStatus = "SYNCING"
-	StatusSynced    SyncStatus = "SYNCED"
-	StatusError     SyncStatus = "ERROR"
-)
-
-// FileInfo represents a file's sync information
-type FileInfo struct {
-	Path         string
-	Status       SyncStatus
-	LastModified time.Time
-	Size         int64
-	IsDownloaded bool
-	IsDirectory  bool
-	FilesContent map[string]*FileInfo
-}
 
 // SyncManager handles file synchronization
 type SyncManager struct {
 	watchDir   string
-	eventChan  chan filesystem.FileEvent
+	eventChan  chan models.FileEvent
 	watcher    *filesystem.Watcher
-	fileInfos  map[string]*FileInfo
+	fileInfos  map[string]*models.FileInfo
 	mu         sync.RWMutex
 	isRunning  bool
-	statusChan chan *FileInfo
+	statusChan chan *models.FileInfo
 }
 
 // NewSyncManager creates a new sync manager
 func NewSyncManager(watchDir string) *SyncManager {
 	return &SyncManager{
 		watchDir:   watchDir,
-		eventChan:  make(chan filesystem.FileEvent),
-		fileInfos:  make(map[string]*FileInfo),
-		statusChan: make(chan *FileInfo, 100),
+		eventChan:  make(chan models.FileEvent),
+		fileInfos:  make(map[string]*models.FileInfo),
+		statusChan: make(chan *models.FileInfo, 100),
 		isRunning:  false,
 	}
 }
@@ -96,11 +76,11 @@ func (sm *SyncManager) Stop() {
 }
 
 // GetFileInfos returns a copy of all file infos
-func (sm *SyncManager) GetFileInfos() []*FileInfo {
+func (sm *SyncManager) GetFileInfos() []*models.FileInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
-	result := make([]*FileInfo, 0, len(sm.fileInfos))
+	result := make([]*models.FileInfo, 0, len(sm.fileInfos))
 	for _, info := range sm.fileInfos {
 		result = append(result, info)
 	}
@@ -108,7 +88,7 @@ func (sm *SyncManager) GetFileInfos() []*FileInfo {
 }
 
 // GetStatusChannel returns a channel for receiving status updates
-func (sm *SyncManager) GetStatusChannel() <-chan *FileInfo {
+func (sm *SyncManager) GetStatusChannel() <-chan *models.FileInfo {
 	return sm.statusChan
 }
 
@@ -116,9 +96,9 @@ func (sm *SyncManager) GetStatusChannel() <-chan *FileInfo {
 func (sm *SyncManager) processEvents() {
 	for event := range sm.eventChan {
 		switch event.Type {
-		case filesystem.Created, filesystem.Modified:
+		case models.EventCreated, models.EventModified:
 			sm.handleFileChange(event.Path, event.Timestamp)
-		case filesystem.Deleted:
+		case models.EventDeleted:
 			sm.handleFileDelete(event.Path)
 		}
 	}
@@ -130,11 +110,12 @@ func (sm *SyncManager) handleFileChange(path string, timestamp time.Time) {
 	defer sm.mu.Unlock()
 
 	// For now, just track the file status
-	info := &FileInfo{
+	info := &models.FileInfo{
 		Path:         path,
-		Status:       StatusNotSynced,
+		Status:       models.StatusNotSynced,
 		LastModified: timestamp,
 		IsDownloaded: true, // It's a local file, so it's "downloaded"
+		Version:      1,
 	}
 
 	sm.fileInfos[path] = info
@@ -147,13 +128,13 @@ func (sm *SyncManager) handleFileChange(path string, timestamp time.Time) {
 	// Mock a sync process
 	go func() {
 		// Update status to syncing
-		sm.updateFileStatus(path, StatusSyncing)
+		sm.updateFileStatus(path, models.StatusSyncing)
 
 		// Simulate sync time
 		time.Sleep(2 * time.Second)
 
 		// Update status to synced
-		sm.updateFileStatus(path, StatusSynced)
+		sm.updateFileStatus(path, models.StatusSynced)
 	}()
 }
 
@@ -169,9 +150,9 @@ func (sm *SyncManager) handleFileDelete(path string) {
 		delete(sm.fileInfos, path)
 
 		// Send a deleting notification through the status channel
-		sm.statusChan <- &FileInfo{
+		sm.statusChan <- &models.FileInfo{
 			Path:   path,
-			Status: StatusNotSynced,
+			Status: models.StatusNotSynced,
 		}
 	}
 
@@ -181,7 +162,7 @@ func (sm *SyncManager) handleFileDelete(path string) {
 }
 
 // updateFileStatus updates a file's status and notifies listeners
-func (sm *SyncManager) updateFileStatus(path string, status SyncStatus) {
+func (sm *SyncManager) updateFileStatus(path string, status models.SyncStatus) {
 	sm.mu.Lock()
 	info, exists := sm.fileInfos[path]
 	if exists {
@@ -199,7 +180,7 @@ func (sm *SyncManager) initialRead() {
 	// and adds them to the sync manager
 	// This is useful for syncing existing files on startup
 
-	var initialContent []*FileInfo = make([]*FileInfo, 0)
+	var initialContent []*models.FileInfo = make([]*models.FileInfo, 0)
 
 	filepath.WalkDir(sm.watchDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -221,26 +202,28 @@ func (sm *SyncManager) initialRead() {
 		name := info.Name()
 		isDir := d.IsDir()
 
-		fileInfo := &FileInfo{
+		fileInfo := &models.FileInfo{
 			Path:         path,
-			Status:       StatusSynced,
+			Status:       models.StatusSynced,
 			LastModified: info.ModTime(),
 			Size:         info.Size(),
 			IsDownloaded: true,
 			IsDirectory:  isDir,
+			Version:      1,
+			LastSynced:   time.Now(),
 		}
 
 		if !isDir && path != sm.watchDir {
 
 			filepathDir := filepath.Dir(path)
 			// Get the file info directory and add this to it's content
-			i := slices.IndexFunc(initialContent, func(e *FileInfo) bool {
+			i := slices.IndexFunc(initialContent, func(e *models.FileInfo) bool {
 				return e.Path == filepathDir
 			})
 
 			if i != -1 {
 				if initialContent[i].FilesContent == nil {
-					initialContent[i].FilesContent = make(map[string]*FileInfo)
+					initialContent[i].FilesContent = make(map[string]*models.FileInfo)
 				}
 
 				// Add the file to the directory
@@ -255,7 +238,7 @@ func (sm *SyncManager) initialRead() {
 		return nil
 	})
 
-	sm.fileInfos = make(map[string]*FileInfo)
+	sm.fileInfos = make(map[string]*models.FileInfo)
 
 	for _, info := range initialContent {
 		sm.fileInfos[info.Path] = info

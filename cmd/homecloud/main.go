@@ -3,19 +3,22 @@ package main
 import (
 	"embed"
 
+	"homecloud/internal/app"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend/dist
+//go:embed ../../frontend/dist
 var assets embed.FS
 
-//go:embed assets/icons/icon_win.ico
+//go:embed ../../assets/icons/icon_win.ico
 var iconData []byte
 
 func main() {
-	app := NewApp(iconData)
+	// Create a new app instance
+	application := app.NewApp(iconData)
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -26,10 +29,10 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour:  &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:         app.startup,
+		OnStartup:         application.Startup,
 		HideWindowOnClose: true,
 		Bind: []interface{}{
-			app,
+			application,
 		},
 	})
 

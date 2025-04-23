@@ -6,37 +6,22 @@ import (
 	"path/filepath"
 	"time"
 
+	"homecloud/internal/models"
+
 	"github.com/fsnotify/fsnotify"
 )
-
-// EventType represents the type of file event
-type EventType string
-
-const (
-	Created  EventType = "CREATED"
-	Modified EventType = "MODIFIED"
-	Deleted  EventType = "DELETED"
-	Renamed  EventType = "RENAMED"
-)
-
-// FileEvent represents a file system event
-type FileEvent struct {
-	Type      EventType
-	Path      string
-	Timestamp time.Time
-}
 
 // Watcher watches a directory for changes
 type Watcher struct {
 	watchDir   string
-	eventChan  chan FileEvent
+	eventChan  chan models.FileEvent
 	fsWatcher  *fsnotify.Watcher
 	stopChan   chan struct{}
 	isWatching bool
 }
 
 // NewWatcher creates a new file system watcher
-func NewWatcher(watchDir string, eventChan chan FileEvent) (*Watcher, error) {
+func NewWatcher(watchDir string, eventChan chan models.FileEvent) (*Watcher, error) {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create watcher: %w", err)
@@ -92,7 +77,7 @@ func (w *Watcher) watchLoop() {
 			}
 
 			eventType := w.getEventType(event)
-			w.eventChan <- FileEvent{
+			w.eventChan <- models.FileEvent{
 				Type:      eventType,
 				Path:      event.Name,
 				Timestamp: time.Now(),
@@ -107,17 +92,17 @@ func (w *Watcher) watchLoop() {
 }
 
 // getEventType determines the type of file event
-func (w *Watcher) getEventType(event fsnotify.Event) EventType {
+func (w *Watcher) getEventType(event fsnotify.Event) models.FileEventType {
 	if event.Has(fsnotify.Create) {
-		return Created
+		return models.EventCreated
 	} else if event.Has(fsnotify.Write) {
-		return Modified
+		return models.EventModified
 	} else if event.Has(fsnotify.Remove) {
-		return Deleted
+		return models.EventDeleted
 	} else if event.Has(fsnotify.Rename) {
-		return Renamed
+		return models.EventRenamed
 	}
-	return Modified // Default
+	return models.EventModified // Default
 }
 
 // GetFileName extracts the filename from a path
